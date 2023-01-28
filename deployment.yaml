@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: env-example
+spec:
+  template:
+    spec:
+      serviceAccountName: secretmaker
+      initContainers:
+        - name: create-auth-token
+          image: docker.io/alpine/k8s:1.25.6
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Fetching token..."
+              url=https://gist.githubusercontent.com/MaxHorstmann/a99823d5aff66fe2ad4e7a4e2a2ee96b/raw/662c19aa96695e52384337bdbd761056bb324e72/token
+              curl $url -o /tmp/authtoken
+              kubectl delete secret authtoken > /dev/null 2>&1
+              kubectl create secret generic authtoken --from-file=AUTH_TOKEN=/tmp/authtoken
+      containers:
+        - name: my-actual-app
+          image: docker.io/alpine/k8s:1.25.6
+          envFrom:
+            - secretRef:
+                name: authtoken
+          command:
+            - sleep
+            - inf
